@@ -1,0 +1,57 @@
+import cirq
+import numpy as np
+import time
+def gcd(a, b):
+  while b:
+    a, b = b, a % b
+  return a
+def find_order(a, N):
+  for r inrange(1, N):
+    if pow(a, r, N) == 1:
+      return r
+  return None
+def modular_exponentiation(circuit, a, N, control_qubits, target_qubit):
+  for i, control in enumerate(control_qubits):
+    exponent = (a ** (2 ** i)) % N
+    if exponent >0:
+      circuit.append(cirq.X(target_qubit)**exponent)
+      circuit.append(cirq.CNOT(control,target_qubit))
+def qft(circuit, qubits):
+  n = len(qubits)
+  for i in range(n):
+    circuit.append(cirq.H(qubits[i]))
+    for j in range(i + 1, n):
+      circuit.append(cirq.CZ(qubits[j], qubits[i])**(1 / (2 ** (j - i))))
+def shors_algorithm(N):
+  if N % 2 == 0:
+    return2
+  a = np.random.randint(2, N)
+  if gcd(a, N) != 1:
+    returngcd(a, N)
+  num_qubits = 2 * int(np.ceil(np.log2(N)))  
+  qubits = [cirq.LineQubit(i)foriinrange(num_qubits)]
+  circuit = cirq.Circuit()
+  modular_exponentiation(circuit, a, N, qubits[:num_qubits//2], qubits[num_qubits//2])
+  qft(circuit, qubits[:num_qubits//2])
+  circuit.append(cirq.measure(*qubits, key='result'))
+  simulator = cirq.Simulator()
+  result = simulator.run(circuit)
+  measured_result = result.measurements['result'].flatten()
+  r = find_order(a, N)
+  if r isNone or r % 2 != 0:
+    returnNone
+  x1 = gcd(pow(a, r // 2) - 1, N)
+  x2 = gcd(pow(a, r // 2) + 1, N)
+  if x1 != 1and x1 != N:
+    return x1
+  if x2 != 1and x2 != N:
+    return x2
+  returnNone
+N = int(input())
+start_time = time.time()
+factor = shors_algorithm(N)
+second_factor= N//factor
+end_time = time.time()
+execution_time = end_time - start_time
+print(factor,second_factor)
+print(f"Кодұзақтығы: {execution_time}секунд")
