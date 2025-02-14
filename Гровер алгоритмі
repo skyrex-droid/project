@@ -1,0 +1,42 @@
+import cirq #кванттық симуляторды қолдануға арналған модуль
+import numpy as np #массивтермен байланысты көптеген пайдалы операцияларға мүмкіндік береді
+from itertools import permutations
+distances = {('A','B'):10,('A','C'):15,('B','A'):10,('B','C'):20,
+('C','A'):15,('C','B'):20}  #арнайы қалалар арасындағы арақашықтыңы туралы деректерді сақтайтын сөздік
+def calculate_distance(route):
+    total_distance = 0
+    for i in range(len(route) - 1):
+        total_distance += distances.get((route[i], route[i + 1]),0)
+    total_distance += distances.get((route[-1], route[0]),0)  
+    return total_distance  #деген арнайы қалалар арасындағы арақашықтықты есептейтін функция
+cities = ['A','B','C']
+all_routes = list(permutations(cities))  #Біз берген массвтегі                                                                                                               ьэлементтердің жалпылама комбинацияларын табу.
+num_routes = len(all_routes)
+qubits = [cirq.LineQubit(i)foriinrange(num_routes)]
+circuit = cirq.Circuit()#Кванттық регистрді тіркеу
+circuit.append(cirq.H(q)for q in qubits) #Кванттық схеманы жасау үшін арналған модуль
+min_distance = min(calculate_distance(route)for route inall_routes)
+print(f"Минималды арақашықтық: {min_distance}") #Бірінші Oracle – минималды арақашықтықты табу және белгілеу
+for idx, route in enumerate(all_routes):
+    ifcalculate_distance(route) == min_distance:
+        circuit.append(cirq.X(qubits[idx]))   #Оракалдың пайда болуы
+num_iterations = int(np.sqrt(num_routes))  
+for _ inrange(num_iterations): 
+    circuit.append(cirq.H(q)for q in qubits)
+    circuit.append(cirq.X(q)for q in qubits)
+    circuit.append(cirq.H(q)for q in qubits) #Гровер итерациясын қолдану   
+    for idx, route inenumerate(all_routes):
+        if calculate_distance(route) == min_distance:
+            circuit.append(cirq.X(qubits[idx])) #Инверсия қолдану
+    circuit.append(cirq.H(q)for q in qubits)
+    circuit.append(cirq.X(q)for q in qubits)
+    circuit.append(cirq.H(q)for q in qubits) #Екінші Oracle пайда болуы
+circuit.append(cirq.measure(*qubits, key='result')
+simulator = cirq.Simulator()
+result = simulator.run(circuit, repetitions=1000)
+counts = result.histogram(key='result')
+print("Нәтиже:")
+for outcome, count incounts.items():
+    route_index = int(bin(outcome)[2:].zfill(num_routes),2)
+    ifroute_index<len(all_routes):  
+        print(f"Жол: {all_routes[route_index]}, Саны: {count}") #Екінші реттік инверсия
